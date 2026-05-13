@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hospital Readmission Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f1eb;
+    --surface: #fffdf8;
+    --surface2: #f0ece2;
+    --border: #d8d2c4;
+    --text: #1a1714;
+    --text2: #6b6458;
+    --text3: #9c9187;
+    --accent: #c84b2f;
+    --accent2: #2d6a4f;
+    --accent3: #e9841a;
+    --accent4: #3d5a8a;
+    --mono: 'DM Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .header {
+    background: var(--text);
+    color: var(--bg);
+    padding: 2rem 2.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .header-left h1 {
+    font-family: var(--display);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+
+  .header-left p {
+    font-size: 0.72rem;
+    color: #9c9187;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .header-right {
+    text-align: right;
+    font-size: 0.7rem;
+    color: #9c9187;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    line-height: 1.8;
+  }
+
+  .header-right span {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--bg);
+    font-family: var(--display);
+    font-weight: 600;
+  }
+
+  .filters {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 2.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filters label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text2);
+    margin-right: 0.3rem;
+  }
+
+  .filters select {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .filter-group { display: flex; align-items: center; }
+
+  .main { padding: 2rem 2.5rem; }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .kpi.red::before { background: var(--accent); }
+  .kpi.green::before { background: var(--accent2); }
+  .kpi.amber::before { background: var(--accent3); }
+  .kpi.blue::before { background: var(--accent4); }
+
+  .kpi-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    margin-bottom: 0.5rem;
+  }
+
+  .kpi-value {
+    font-family: var(--display);
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+
+  .kpi.red .kpi-value { color: var(--accent); }
+  .kpi.green .kpi-value { color: var(--accent2); }
+  .kpi.amber .kpi-value { color: var(--accent3); }
+  .kpi.blue .kpi-value { color: var(--accent4); }
+
+  .kpi-sub {
+    font-size: 0.65rem;
+    color: var(--text3);
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+  }
+
+  .card-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .card-title span {
+    font-family: var(--display);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  canvas { width: 100% !important; }
+
+  .risk-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+  .risk-table th {
+    text-transform: uppercase;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    font-weight: 400;
+    text-align: left;
+    padding: 0 0 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .risk-table td {
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--surface2);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .risk-table tr:last-child td { border-bottom: none; }
+
+  .risk-bar-wrap { width: 80px; height: 6px; background: var(--surface2); border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .risk-bar { height: 100%; border-radius: 3px; }
+
+  .badge {
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+  .badge.high { background: #fde8e4; color: var(--accent); }
+  .badge.med { background: #fef3e2; color: var(--accent3); }
+  .badge.low { background: #e4f2eb; color: var(--accent2); }
+
+  .trend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--surface2);
+    font-size: 0.72rem;
+  }
+  .trend-row:last-child { border-bottom: none; }
+  .trend-dept { flex: 1; color: var(--text); }
+  .trend-val { font-family: var(--display); font-weight: 700; font-size: 0.9rem; }
+  .trend-delta { font-size: 0.65rem; color: var(--text3); }
+  .delta-up { color: var(--accent); }
+  .delta-dn { color: var(--accent2); }
+
+  .footer {
+    background: var(--text);
+    color: var(--text3);
+    padding: 1rem 2.5rem;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Readmission<br>Analysis</h1>
+    <p>CMS Medicare Dataset · 2023–2024</p>
+  </div>
+  <div class="header-right">
+    Last updated
+    <span>May 2024</span>
+    Report period
+    <span>FY 2023–24</span>
+  </div>
+</div>
+
+<div class="filters">
+  <div class="filter-group">
+    <label>Department</label>
+    <select id="deptFilter" onchange="applyFilters()">
+      <option value="all">All Departments</option>
+      <option value="cardiology">Cardiology</option>
+      <option value="pulmonology">Pulmonology</option>
+      <option value="orthopedics">Orthopedics</option>
+      <option value="neurology">Neurology</option>
+      <option value="oncology">Oncology</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Age Group</label>
+    <select id="ageFilter" onchange="applyFilters()">
+      <option value="all">All Ages</option>
+      <option value="65-74">65–74</option>
+      <option value="75-84">75–84</option>
+      <option value="85+">85+</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Period</label>
+    <select id="periodFilter" onchange="applyFilters()">
+      <option value="fy2324">FY 2023–24</option>
+      <option value="fy2223">FY 2022–23</option>
+      <option value="fy2122">FY 2021–22</option>
+    </select>
+  </div>
+</div>
+
+<div class="main">
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi red">
+      <div class="kpi-label">30-day readmission rate</div>
+      <div class="kpi-value" id="kpi1">18.4%</div>
+      <div class="kpi-sub">▲ 1.2% vs prior year</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Total patients analyzed</div>
+      <div class="kpi-value" id="kpi2">24,812</div>
+      <div class="kpi-sub">Across 6 departments</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Avg length of stay (days)</div>
+      <div class="kpi-value" id="kpi3">5.3</div>
+      <div class="kpi-sub">▼ 0.4 days vs prior year</div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">High-risk patient segments</div>
+      <div class="kpi-value" id="kpi4">3</div>
+      <div class="kpi-sub">Age 75+, CHF, COPD</div>
+    </div>
+  </div>
+
+  <!-- Row 1 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">
+        Readmission rate by diagnosis <span>Monthly trend · FY 2023–24</span>
+      </div>
+      <canvas id="lineChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        Patient volume by age group <span>Distribution</span>
+      </div>
+      <canvas id="doughnutChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Readmission by department</div>
+      <canvas id="barChart" height="240"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">High-risk patient segments</div>
+      <table class="risk-table">
+        <thead>
+          <tr>
+            <th>Segment</th>
+            <th>Rate</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CHF · Age 75+</td>
+            <td>
+              <div class="risk-bar-wrap"><div class="risk-bar" style="width:84%;background:var(--accent)"></div></div>
+              <strong>31.2%</strong>
+            </td>
+            <td><span class="badge high">High</span></td>
+          </tr>
+          <tr>
+            <td>COPD · Age 85+</td>
+            <td>
+              <div class="risk-bar-wrap"><div class="risk-bar" style="width:72%;background:var(--accent)"></div></div>
+              <strong>28.7%</strong>
+            </td>
+            <td><span class="badge high">High</span></td>
+          </tr>
+          <tr>
+            <td>Pneumonia · Age 75+</td>
+            <td>
+              <div class="risk-bar-wrap"><div class="risk-bar" style="width:58%;background:var(--accent3)"></div></div>
+              <strong>22.4%</strong>
+            </td>
+            <td><span class="badge med">Med</span></td>
+          </tr>
+          <tr>
+            <td>Hip Fracture · Age 85+</td>
+            <td>
+              <div class="risk-bar-wrap"><div class="risk-bar" style="width:50%;background:var(--accent3)"></div></div>
+              <strong>19.8%</strong>
+            </td>
+            <td><span class="badge med">Med</span></td>
+          </tr>
+          <tr>
+            <td>Diabetes · Age 65–74</td>
+            <td>
+              <div class="risk-bar-wrap"><div class="risk-bar" style="width:32%;background:var(--accent2)"></div></div>
+              <strong>12.1%</strong>
+            </td>
+            <td><span class="badge low">Low</span></td>
+          </tr>
+          <tr>
+            <td>Hypertension · Age 65–74</td>
+            <td>
+              <div class="risk-bar-wrap"><div class="risk-bar" style="width:24%;background:var(--accent2)"></div></div>
+              <strong>9.4%</strong>
+            </td>
+            <td><span class="badge low">Low</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Department trend · YoY</div>
+      <div class="trend-row">
+        <div class="trend-dept">Cardiology</div>
+        <div class="trend-val" style="color:var(--accent)">24.1%</div>
+        <div class="trend-delta delta-up">▲ 2.3%</div>
+      </div>
+      <div class="trend-row">
+        <div class="trend-dept">Pulmonology</div>
+        <div class="trend-val" style="color:var(--accent)">21.8%</div>
+        <div class="trend-delta delta-up">▲ 0.9%</div>
+      </div>
+      <div class="trend-row">
+        <div class="trend-dept">Neurology</div>
+        <div class="trend-val" style="color:var(--accent3)">17.2%</div>
+        <div class="trend-delta delta-dn">▼ 1.1%</div>
+      </div>
+      <div class="trend-row">
+        <div class="trend-dept">Oncology</div>
+        <div class="trend-val" style="color:var(--accent3)">15.6%</div>
+        <div class="trend-delta delta-dn">▼ 0.4%</div>
+      </div>
+      <div class="trend-row">
+        <div class="trend-dept">Orthopedics</div>
+        <div class="trend-val" style="color:var(--accent2)">11.3%</div>
+        <div class="trend-delta delta-dn">▼ 2.1%</div>
+      </div>
+      <div class="trend-row">
+        <div class="trend-dept">General Medicine</div>
+        <div class="trend-val" style="color:var(--accent2)">9.8%</div>
+        <div class="trend-delta delta-dn">▼ 0.8%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>Data source: CMS Medicare Hospital Readmissions Reduction Program · data.cms.gov</span>
+  <span>Built with Python · SQL · Power BI</span>
+</div>
+
+<script>
+const months = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+
+const lineData = {
+  all: {
+    cardiology: [22,23,25,24,26,28,27,25,23,24,22,24],
+    pulmonology: [19,20,22,21,23,24,23,22,20,21,19,22],
+    orthopedics: [11,12,11,13,12,11,10,11,12,11,10,11],
+    neurology:   [16,17,18,17,19,18,17,16,17,17,16,17],
+  }
+};
+
+const colors = {
+  cardiology:  '#c84b2f',
+  pulmonology: '#e9841a',
+  orthopedics: '#2d6a4f',
+  neurology:   '#3d5a8a',
+};
+
+const lineCtx = document.getElementById('lineChart').getContext('2d');
+const lineChart = new Chart(lineCtx, {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: Object.keys(lineData.all).map(dept => ({
+      label: dept.charAt(0).toUpperCase() + dept.slice(1),
+      data: lineData.all[dept],
+      borderColor: colors[dept],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: colors[dept],
+      tension: 0.4,
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { font: { family: 'DM Mono', size: 11 }, color: '#6b6458', boxWidth: 12, padding: 12 } }
+    },
+    scales: {
+      x: { grid: { color: '#e8e2d4' }, ticks: { font: { family: 'DM Mono', size: 10 }, color: '#9c9187' } },
+      y: { grid: { color: '#e8e2d4' }, ticks: { font: { family: 'DM Mono', size: 10 }, color: '#9c9187', callback: v => v + '%' }, min: 5, max: 35 }
+    }
+  }
+});
+
+const doughCtx = document.getElementById('doughnutChart').getContext('2d');
+new Chart(doughCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['65–74 yrs', '75–84 yrs', '85+ yrs'],
+    datasets: [{
+      data: [38, 41, 21],
+      backgroundColor: ['#3d5a8a', '#c84b2f', '#e9841a'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'DM Mono', size: 11 }, color: '#6b6458', padding: 16, boxWidth: 12 } }
+    }
+  }
+});
+
+const barCtx = document.getElementById('barChart').getContext('2d');
+new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: ['Cardiology','Pulmonology','Neurology','Oncology','Orthopedics','Gen. Med'],
+    datasets: [{
+      label: 'Readmission Rate (%)',
+      data: [24.1, 21.8, 17.2, 15.6, 11.3, 9.8],
+      backgroundColor: ['#c84b2f','#c84b2f','#e9841a','#e9841a','#2d6a4f','#2d6a4f'],
+      borderRadius: 2,
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#e8e2d4' }, ticks: { font: { family: 'DM Mono', size: 10 }, color: '#9c9187', callback: v => v + '%' } },
+      y: { grid: { display: false }, ticks: { font: { family: 'DM Mono', size: 10 }, color: '#6b6458' } }
+    }
+  }
+});
+
+function applyFilters() {
+  const dept = document.getElementById('deptFilter').value;
+  const age = document.getElementById('ageFilter').value;
+  const period = document.getElementById('periodFilter').value;
+
+  const rateMap = { all: '18.4', cardiology: '24.1', pulmonology: '21.8', orthopedics: '11.3', neurology: '17.2', oncology: '15.6' };
+  const patMap  = { all: '24,812', cardiology: '5,412', pulmonology: '4,231', orthopedics: '3,891', neurology: '4,102', oncology: '3,201' };
+  const losMap  = { all: '5.3', cardiology: '6.1', pulmonology: '5.8', orthopedics: '4.2', neurology: '5.5', oncology: '6.4' };
+
+  document.getElementById('kpi1').textContent = (rateMap[dept] || '18.4') + '%';
+  document.getElementById('kpi2').textContent = patMap[dept] || '24,812';
+  document.getElementById('kpi3').textContent = losMap[dept] || '5.3';
+
+  const periodOffset = { fy2324: 0, fy2223: 1.8, fy2122: 3.2 };
+  const offset = periodOffset[period] || 0;
+
+  if (dept === 'all') {
+    lineChart.data.datasets = Object.keys(lineData.all).map(d => ({
+      label: d.charAt(0).toUpperCase() + d.slice(1),
+      data: lineData.all[d].map(v => Math.max(5, v - offset)),
+      borderColor: colors[d],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: colors[d],
+      tension: 0.4,
+    }));
+  } else if (lineData.all[dept]) {
+    lineChart.data.datasets = [{
+      label: dept.charAt(0).toUpperCase() + dept.slice(1),
+      data: lineData.all[dept].map(v => Math.max(5, v - offset)),
+      borderColor: colors[dept],
+      backgroundColor: colors[dept] + '22',
+      fill: true,
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: colors[dept],
+      tension: 0.4,
+    }];
+  }
+  lineChart.update();
+}
+</script>
+</body>
+</html>
